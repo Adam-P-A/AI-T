@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot z AI</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            background-color: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    <button id="saveBtn">Zapisz Progres</button>
+    <button id="loadBtn">Wczytaj Progres</button>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Właściwości robota
+        const robot = {
+            x: 100,
+            y: 250,
+            width: 30,
+            height: 30,
+            leg: {
+                segments: [
+                    { x: 0, y: 0, length: 50, angle: 0 },
+                    { x: 0, y: 50, length: 30, angle: 0 }
+                ],
+                speed: 0.02,
+                direction: 1 // Kierunek ruchu nogi
+            },
+            velocityY: 0,
+            gravity: 0.5,
+            grounded: true,
+            learningRate: 0.1,
+            jumpForce: -10,
+            movingForward: true // Flaga do ruchu do przodu
+        };
+
+        const goal = {
+            x: 750,
+            y: 250,
+            size: 30
+        };
+
+        let goalReached = false;
+
+        // Ustawienie przycisków
+        document.getElementById("saveBtn").onclick = saveProgress;
+        document.getElementById("loadBtn").onclick = loadProgress;
+
+        function update() {
+            // Grawitacja i kolizja z podłogą
+            if (robot.y + robot.height < canvas.height - 20) {
+                robot.velocityY += robot.gravity; // Grawitacja
+                robot.y += robot.velocityY;
+                robot.grounded = false;
+            } else {
+                robot.y = canvas.height - 20 - robot.height; // Poprawienie na podłodze
+                robot.velocityY = 0;
+                robot.grounded = true;
+            }
+
+            // AI do ruchu nogi
+            if (robot.grounded) {
+                moveLeg();
+                if (robot.movingForward) {
+                    robot.x += 1; // Ruch do przodu
+                    if (robot.x > canvas.width - robot.width) {
+                        robot.movingForward = false; // Zmiana kierunku
+                    }
+                } else {
+                    robot.x -= 1; // Ruch w tył
+                    if (robot.x < 0) {
+                        robot.movingForward = true; // Zmiana kierunku
+                    }
+                }
+            }
+
+            // Sprawdzenie, czy osiągnięto cel
+            if (!goalReached && robot.x + robot.width >= goal.x && robot.y + robot.height >= goal.y - goal.size) {
+                goalReached = true;
+                alert("Cel osiągnięty!");
+                resetSimulation();
+            }
+
+            // Rysowanie
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawFloor();
+            drawRobot();
+            drawGoal();
+
+            requestAnimationFrame(update);
+        }
+
+        function drawFloor() {
+            ctx.fillStyle = "#8B4513"; // Kolor podłogi
+            ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+        }
+
+        function drawRobot() {
+            ctx.fillStyle = "blue";
+            ctx.fillRect(robot.x, robot.y, robot.width, robot.height);
+
+            // Rysowanie nogi robota
+            ctx.save();
+            ctx.translate(robot.x + robot.width / 2, robot.y + robot.height);
+            ctx.rotate(robot.leg.segments[0].angle);
+            ctx.fillStyle = "green";
+            ctx.fillRect(-5, 0, 10, robot.leg.segments[0].length);
+            ctx.rotate(robot.leg.segments[1].angle);
+            ctx.fillRect(-5, robot.leg.segments[0].length, 10, robot.leg.segments[1].length);
+            ctx.restore();
+        }
+
+        function drawGoal() {
+            ctx.fillStyle = "red";
+            ctx.fillRect(goal.x, goal.y - goal.size, goal.size, goal.size);
+        }
+
+        function moveLeg() {
+            // AI do ruchu nogi
+            if (robot.grounded) {
+                robot.leg.segments[0].angle = Math.sin(Date.now() * 0.01) * 0.5; // Ruch nogi
+                robot.leg.segments[1].angle = Math.sin(Date.now() * 0.01) * 0.5;
+            }
+        }
+
+        function saveProgress() {
+            const progress = {
+                robotX: robot.x,
+                robotY: robot.y,
+                velocityY: robot.velocityY,
+                grounded: robot.grounded,
+                goalReached: goalReached
+            };
+            localStorage.setItem("robotProgress", JSON.stringify(progress));
+            alert("Progres zapisany!");
+        }
+
+        function loadProgress() {
+            const savedProgress = localStorage.getItem("robotProgress");
+            if (savedProgress) {
+                const progress = JSON.parse(savedProgress);
+                robot.x = progress.robotX;
+                robot.y = progress.robotY;
+                robot.velocityY = progress.velocityY;
+                robot.grounded = progress.grounded;
+                goalReached = progress.goalReached;
+                alert("Progres wczytany!");
+            } else {
+                alert("Brak zapisanego progresu!");
+            }
+        }
+
+        function resetSimulation() {
+            robot.x = 100;
+            robot.y = 250;
+            robot.velocityY = 0;
+            robot.grounded = true;
+            goalReached = false;
+        }
+
+        update();
+    </script>
+</body>
+</html>
